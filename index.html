@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>心目中的前三名 票選系統</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <!-- Babel for JSX compilation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useRef } = React;
+
+    // --- 預設範例資料 ---
+    const INITIAL_ITEMS = [
+      {
+        id: 'sample-1',
+        title: '陽光日出海景',
+        description: '溫暖金黃色晨光照耀海岸線',
+        image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop&q=80',
+        createdAt: Date.now() - 4000
+      },
+      {
+        id: 'sample-2',
+        title: '靜謐森林綠道',
+        description: '高聳杉木林間散發清新芬多精',
+        image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=600&auto=format&fit=crop&q=80',
+        createdAt: Date.now() - 3000
+      },
+      {
+        id: 'sample-3',
+        title: '雄偉壯麗雪山',
+        description: '白雪皚皚的山峰與湛藍天空',
+        image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&auto=format&fit=crop&q=80',
+        createdAt: Date.now() - 2000
+      },
+      {
+        id: 'sample-4',
+        title: '浪漫璀璨夜景',
+        description: '俯瞰繁華都市燈火通明的夜晚',
+        image: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=600&auto=format&fit=crop&q=80',
+        createdAt: Date.now() - 1000
+      }
+    ];
+
+    // 圖示組件
+    const TrophyIcon = ({ className = "w-5 h-5" }) => (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 21h8m-4-4v4m-5-11a4 4 4 0 00-8 0v2a4 4 4 0 004 4h.5M16 6a4 4 0 018 0v2a4 4 4 0 014 4h-.5M5 6h14v7a7 7 0 01-14 0V6z" />
+      </svg>
+    );
+    const UploadIcon = ({ className = "w-5 h-5" }) => (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+      </svg>
+    );
+    const VoteIcon = ({ className = "w-5 h-5" }) => (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    );
+    const TrashIcon = ({ className = "w-4 h-4" }) => (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+    );
+    const PlusIcon = ({ className = "w-5 h-5" }) => (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+      </svg>
+    );
+    const ChartIcon = ({ className = "w-5 h-5" }) => (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    );
+    const UserIcon = ({ className = "w-5 h-5" }) => (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+    );
+
+    function App() {
+      const [items, setItems] = useState(INITIAL_ITEMS);
+      const [votes, setVotes] = useState([]);
+      const [activeTab, setActiveTab] = useState('vote');
+
+      // 投票者座號 1~21
+      const [voterSeat, setVoterSeat] = useState('');
+      const [voterName, setVoterName] = useState('');
+      const [selectedTop3, setSelectedTop3] = useState({ first: null, second: null, third: null });
+
+      // 管理員密碼 aa710119
+      const ADMIN_PASSWORD = 'aa710119';
+      const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+      const [showAuthModal, setShowAuthModal] = useState(false);
+      const [inputPassword, setInputPassword] = useState('');
+      const [authError, setAuthError] = useState('');
+      const [pendingAction, setPendingAction] = useState(null);
+      const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+      // 上傳表單
+      const [newTitle, setNewTitle] = useState('');
+      const [newDesc, setNewDesc] = useState('');
+      const [newImagePreview, setNewImagePreview] = useState(null);
+      const fileInputRef = useRef(null);
+
+      // 計分權重
+      const [weights] = useState({ first: 3, second: 2, third: 1 });
+      const [toast, setToast] = useState(null);
+
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+      };
+
+      const requireAdmin = (actionCallback) => {
+        if (isAdminUnlocked) {
+          actionCallback();
+        } else {
+          setPendingAction(() => actionCallback);
+          setInputPassword('');
+          setAuthError('');
+          setShowAuthModal(true);
+        }
+      };
+
+      const handleVerifyPassword = (e) => {
+        e.preventDefault();
+        if (inputPassword === ADMIN_PASSWORD) {
+          setIsAdminUnlocked(true);
+          setShowAuthModal(false);
+          showToast('🔓 管理員驗證成功！');
+          if (pendingAction) {
+            pendingAction();
+            setPendingAction(null);
+          }
+        } else {
+          setAuthError('密碼錯誤，請重新輸入！');
+        }
+      };
+
+      const handleImageSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.size > 5 * 1024 * 1024) {
+            showToast('圖片大小不能超過 5MB', 'error');
+            return;
+          }
+          const reader = new FileReader();
+          reader.onloadend = () => setNewImagePreview(reader.result);
+          reader.readAsDataURL(file);
+        }
+      };
+
+      const handleAddItem = (e) => {
+        e.preventDefault();
+        if (!newTitle.trim()) return showToast('請輸入候選項目名稱', 'error');
+        if (!newImagePreview) return showToast('請上傳一張圖片', 'error');
+
+        const newItem = {
+          id: 'item-' + Date.now(),
+          title: newTitle.trim(),
+          description: newDesc.trim(),
+          image: newImagePreview,
+          createdAt: Date.now()
+        };
+
+        setItems((prev) => [newItem, ...prev]);
+        setNewTitle('');
+        setNewDesc('');
+        setNewImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        showToast('成功新增候選項目！');
+      };
+
+      const handleDeleteItem = (id) => {
+        requireAdmin(() => {
+          setItems((prev) => prev.filter((item) => item.id !== id));
+          setSelectedTop3((prev) => ({
+            first: prev.first === id ? null : prev.first,
+            second: prev.second === id ? null : prev.second,
+            third: prev.third === id ? null : prev.third,
+          }));
+          showToast('已移除該項目');
+        });
+      };
+
+      const handleSelectRank = (itemId, rank) => {
+        setSelectedTop3((prev) => {
+          const next = { ...prev };
+          if (next.first === itemId) next.first = null;
+          if (next.second === itemId) next.second = null;
+          if (next.third === itemId) next.third = null;
+          next[rank] = itemId;
+          return next;
+        });
+      };
+
+      const handleClearSlot = (rank) => {
+        setSelectedTop3((prev) => ({ ...prev, [rank]: null }));
+      };
+
+      // 快速建立 1~21 號候選
+      const handleGenerate21Items = () => {
+        const list = [];
+        for (let i = 1; i <= 21; i++) {
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="%234f46e5"/><circle cx="300" cy="200" r="110" fill="%23ffffff" fill-opacity="0.15"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="75" font-weight="900" fill="%23ffffff">${i} 號</text></svg>`;
+          const encodedSvg = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+          list.push({
+            id: `item-${i}`,
+            title: `${i} 號候選項目`,
+            description: `第 ${i} 號心目中前三名候選`,
+            image: encodedSvg,
+            createdAt: Date.now() - (22 - i) * 1000
+          });
+        }
+        setItems(list);
+        showToast('🎉 已成功建立 1 到 21 號候選項目！');
+      };
+
+      const handleLoadSampleItems = () => {
+        setItems(INITIAL_ITEMS);
+        showToast('已載入預設範例項目');
+      };
+
+      // 送出選票 (驗證座號)
+      const handleSubmitVote = (e) => {
+        e.preventDefault();
+        if (!voterSeat) return showToast('請選擇您的座號 (1 ~ 21 號)！', 'error');
+
+        const seatAlreadyVoted = votes.some((v) => Number(v.voterSeat) === Number(voterSeat));
+        if (seatAlreadyVoted) return showToast(`座號 ${voterSeat} 號已經完成過投票，無法重複投遞！`, 'error');
+
+        if (!selectedTop3.first || !selectedTop3.second || !selectedTop3.third) {
+          return showToast('請完整選出心目中的第一、二、三名！', 'error');
+        }
+
+        const newVote = {
+          id: 'vote-' + Date.now(),
+          voterSeat: Number(voterSeat),
+          voterName: voterName.trim() || `${voterSeat}號同學`,
+          choices: { ...selectedTop3 },
+          timestamp: new Date().toLocaleString('zh-TW', { hour12: false })
+        };
+
+        setVotes((prev) => [newVote, ...prev]);
+        setVoterSeat('');
+        setVoterName('');
+        setSelectedTop3({ first: null, second: null, third: null });
+        showToast(`🎉 座號 ${newVote.voterSeat} 號投票成功！已記錄選票。`);
+      };
+
+      const confirmResetVotes = () => {
+        setVotes([]);
+        setShowConfirmModal(false);
+        showToast('已清空所有投票紀錄');
+      };
+
+      // 排行榜計分
+      const leaderboard = useMemo(() => {
+        const scoreMap = {};
+        items.forEach((item) => {
+          scoreMap[item.id] = { item, score: 0, countFirst: 0, countSecond: 0, countThird: 0 };
+        });
+
+        votes.forEach((v) => {
+          if (v.choices.first && scoreMap[v.choices.first]) {
+            scoreMap[v.choices.first].score += weights.first;
+            scoreMap[v.choices.first].countFirst += 1;
+          }
+          if (v.choices.second && scoreMap[v.choices.second]) {
+            scoreMap[v.choices.second].score += weights.second;
+            scoreMap[v.choices.second].countSecond += 1;
+          }
+          if (v.choices.third && scoreMap[v.choices.third]) {
+            scoreMap[v.choices.third].score += weights.third;
+            scoreMap[v.choices.third].countThird += 1;
+          }
+        });
+
+        return Object.values(scoreMap).sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          if (b.countFirst !== a.countFirst) return b.countFirst - a.countFirst;
+          return b.countSecond - a.countSecond;
+        });
+      }, [items, votes, weights]);
+
+      const maxScore = useMemo(() => Math.max(...leaderboard.map((l) => l.score), 1), [leaderboard]);
+
+      const handleExportCSV = () => {
+        if (votes.length === 0) return showToast('目前尚無投票紀錄可匯出', 'error');
+
+        const itemMap = Object.fromEntries(items.map((i) => [i.id, i.title]));
+        let csvContent = 'data:text/csv;charset=utf-8,\uFEFF';
+        csvContent += '投票時間,座號,投票者,第一名 (3分),第二名 (2分),第三名 (1分)\n';
+
+        votes.forEach((v) => {
+          const f = itemMap[v.choices.first] || '未知';
+          const s = itemMap[v.choices.second] || '未知';
+          const t = itemMap[v.choices.third] || '未知';
+          csvContent += `"${v.timestamp}","${v.voterSeat}號","${v.voterName}","${f}","${s}","${t}"\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `top3_votes_${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('已下載 CSV 投票紀錄');
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
+          {toast && (
+            <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-lg text-white font-medium transition-all duration-300 ${toast.type === 'error' ? 'bg-rose-500' : 'bg-emerald-600'}`}>
+              {toast.message}
+            </div>
+          )}
+
+          {/* 密碼驗證模組 */}
+          {showAuthModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+              <form onSubmit={handleVerifyPassword} className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
+                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">🔑</div>
+                <h3 className="text-lg font-bold text-slate-800 text-center mb-1">管理員身分驗證</h3>
+                <p className="text-xs text-slate-500 text-center mb-4">請輸入管理密碼 (aa710119)</p>
+                <input
+                  type="password"
+                  value={inputPassword}
+                  onChange={(e) => { setInputPassword(e.target.value); setAuthError(''); }}
+                  placeholder="請輸入管理密碼"
+                  autoFocus
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-center text-lg mb-2"
+                />
+                {authError && <p className="text-xs text-rose-500 text-center mb-3 font-semibold">{authError}</p>}
+                <div className="flex gap-2 mt-4">
+                  <button type="button" onClick={() => { setShowAuthModal(false); setPendingAction(null); }} className="flex-1 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 text-sm font-semibold">取消</button>
+                  <button type="submit" className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-semibold shadow-md">驗證解鎖</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* 清空確認模組 */}
+          {showConfirmModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+              <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
+                <h3 className="text-lg font-bold text-slate-800 mb-2">確認清空投票紀錄？</h3>
+                <p className="text-sm text-slate-500 mb-6">此動作將無法恢復已記錄的資料，確定要清空嗎？</p>
+                <div className="flex justify-end gap-3">
+                  <button onClick={() => setShowConfirmModal(false)} className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 text-sm font-semibold">取消</button>
+                  <button onClick={confirmResetVotes} className="px-4 py-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 text-sm font-semibold shadow-md">確認清空</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 頁首 */}
+          <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+                  <TrophyIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-slate-900">心目中的前三名 票選系統</h1>
+                  <p className="text-xs text-slate-500">座號 1~21 號專用 • 選出前三名 • 即時計分排行榜</p>
+                </div>
+              </div>
+
+              <nav className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200 text-sm font-medium">
+                <button
+                  onClick={() => setActiveTab('vote')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg ${activeTab === 'vote' ? 'bg-white text-indigo-600 shadow-sm font-semibold' : 'text-slate-600'}`}
+                >
+                  <VoteIcon className="w-4 h-4" /> 進行投票
+                </button>
+                <button
+                  onClick={() => setActiveTab('results')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg relative ${activeTab === 'results' ? 'bg-white text-indigo-600 shadow-sm font-semibold' : 'text-slate-600'}`}
+                >
+                  <ChartIcon className="w-4 h-4" /> 結果排行榜
+                  {votes.length > 0 && <span className="ml-1 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">{votes.length}</span>}
+                </button>
+                <button
+                  onClick={() => requireAdmin(() => setActiveTab('manage'))}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg ${activeTab === 'manage' ? 'bg-white text-indigo-600 shadow-sm font-semibold' : 'text-slate-600'}`}
+                >
+                  <PlusIcon className="w-4 h-4" /> 管理與上傳 ({items.length}) {isAdminUnlocked ? '🔓' : '🔒'}
+                </button>
+              </nav>
+            </div>
+          </header>
+
+          {/* 主要內容 */}
+          <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
+            {/* TAB 1: 投票區 */}
+            {activeTab === 'vote' && (
+              <div className="space-y-8">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                        <UserIcon className="w-4 h-4 text-indigo-500" /> 選擇您的座號 (1 ~ 21 號) *
+                      </label>
+                      <select
+                        value={voterSeat}
+                        onChange={(e) => setVoterSeat(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-medium"
+                      >
+                        <option value="">-- 請選擇座號 --</option>
+                        {Array.from({ length: 21 }, (_, i) => i + 1).map((num) => {
+                          const isVoted = votes.some((v) => Number(v.voterSeat) === num);
+                          return (
+                            <option key={num} value={num} disabled={isVoted}>
+                              {num} 號 {isVoted ? '(已完成投票)' : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">姓名 / 稱呼 (選填)</label>
+                      <input
+                        type="text"
+                        value={voterName}
+                        onChange={(e) => setVoterName(e.target.value)}
+                        placeholder="例如: 小明 (未填寫顯示座號)"
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-300"
+                      />
+                    </div>
+                  </div>
+
+                  <h2 className="text-base font-bold text-slate-800 mb-4 flex justify-between">
+                    <span>您的前三名選擇</span>
+                    <span className="text-xs font-normal text-slate-500">點選下方卡片填入</span>
+                  </h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* 第一名 */}
+                    <div className="bg-amber-50/60 border-2 border-amber-300 border-dashed rounded-2xl p-4">
+                      <div className="flex justify-between items-start mb-2
